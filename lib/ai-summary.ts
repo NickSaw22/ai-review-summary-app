@@ -10,7 +10,18 @@ export async function summarizeReviews(product: Product): Promise<string> {
   const averageRating =
     product.reviews.reduce((acc, review) => acc + review.stars, 0) /
     product.reviews.length;
+  
+  const startTime = Date.now();
+  const requestId = crypto.randomUUID();
  
+  console.log(JSON.stringify({
+    event: "ai_request_start",
+    requestId,
+    function: "summarizeReviews",
+    productSlug: product.slug,
+    reviewCount: product.reviews.length,
+    timestamp: new Date().toISOString(),
+  }));
   const prompt = `Write a summary of the reviews for the ${
     product.name
   } product. The product's average rating is ${averageRating} out of 5 stars.
@@ -42,21 +53,45 @@ ${product.reviews
     .join("\n\n")}`;
  
   try {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: "anthropic/claude-sonnet-4.5",
       prompt,
       maxOutputTokens: 1000,
-      temperature: 0.75,
+      temperature: 0.75,    
     });
+
+    const duration = Date.now() - startTime;
  
-    // Clean up the response
+    console.log(JSON.stringify({
+      event: "ai_request_success",
+      requestId,
+      function: "summarizeReviews",
+      productSlug: product.slug,
+      duration,
+      inputTokens: usage?.inputTokens,
+      outputTokens: usage?.outputTokens,
+      totalTokens: usage?.totalTokens,
+      timestamp: new Date().toISOString(),
+    }));
+ 
     return text
       .trim()
       .replace(/^"/, "")
       .replace(/"$/, "")
       .replace(/[\[\(]\d+ words[\]\)]/g, "");
   } catch (error) {
-    console.error("Failed to generate summary:", error);
+    const duration = Date.now() - startTime;
+ 
+    console.error(JSON.stringify({
+      event: "ai_request_error",
+      requestId,
+      function: "summarizeReviews",
+      productSlug: product.slug,
+      duration,
+      error: error instanceof Error ? error.message : "Unknown error",
+      timestamp: new Date().toISOString(),
+    }));
+ 
     throw new Error("Unable to generate review summary. Please try again.");
   }
 }
