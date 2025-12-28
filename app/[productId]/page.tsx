@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProduct, getProducts } from "@/lib/sample-data";
+import { Product } from "@/lib/types";
 import { Reviews } from "@/components/reviews";
 import { StreamingSummary } from "@/components/streaming-summary";
 import { CompareSummary } from "@/components/compare-summary";
@@ -26,6 +27,7 @@ export default async function ProductPage({
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto space-y-8">
+        <TrackView slug={product.slug} />
         <div>
           <h1 className="text-4xl font-bold">{product.name}</h1>
 
