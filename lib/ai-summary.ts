@@ -1,7 +1,12 @@
 import { generateText, generateObject, streamText } from "ai";
+import { cacheLife, cacheTag } from "next/cache";
 import { Product, ReviewInsights, ReviewInsightsSchema } from "./types";
 
 export async function summarizeReviews(product: Product): Promise<string> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`product-summary-${product.slug}`);
+ 
   const averageRating =
     product.reviews.reduce((acc, review) => acc + review.stars, 0) /
     product.reviews.length;
@@ -48,7 +53,7 @@ ${product.reviews
     return text
       .trim()
       .replace(/^"/, "")
-      .replace(/\"$/, "")
+      .replace(/"$/, "")
       .replace(/[\[\(]\d+ words[\]\)]/g, "");
   } catch (error) {
     console.error("Failed to generate summary:", error);
@@ -101,9 +106,11 @@ ${product.reviews
   return result;
 }
 
-export async function getReviewInsights(
-  product: Product
-): Promise<ReviewInsights> {
+export async function getReviewInsights(product: Product): Promise<ReviewInsights> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`product-insights-${product.slug}`);
+ 
   const averageRating =
     product.reviews.reduce((acc, review) => acc + review.stars, 0) /
     product.reviews.length;
@@ -119,7 +126,9 @@ Be specific and concise. Each item should be 3-7 words.
  
 Reviews:
 ${product.reviews
-    .map((review, i) => `Review ${i + 1} (${review.stars} stars):\n${review.review}`)
+    .map(
+      (review, i) => `Review ${i + 1} (${review.stars} stars):\n${review.review}`
+    )
     .join("\n\n")}`;
  
   try {
