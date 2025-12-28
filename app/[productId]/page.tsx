@@ -16,12 +16,11 @@ export default async function ProductPage({
 }) {
   const { productId } = await params;
  
-  let product;
+    let product: Product;
   try {
     product = await getProduct(productId);
   } catch (error) {
-        <TrackView slug={product.slug} />
-    notFound();
+      return notFound();
   }
  
   return (
