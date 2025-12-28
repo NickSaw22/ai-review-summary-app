@@ -2,7 +2,8 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProduct, getProducts } from "@/lib/sample-data";
 import { Reviews } from "@/components/reviews";
- 
+import { StreamingSummary } from "@/components/streaming-summary";
+
 export default async function ProductPage({
   params,
 }: {
@@ -12,8 +13,8 @@ export default async function ProductPage({
  
   let product;
   try {
-    product = getProduct(productId);
-  } catch {
+    product = await getProduct(productId);
+  } catch (error) {
     notFound();
   }
  
@@ -26,13 +27,15 @@ export default async function ProductPage({
             {product.description}
           </p>
         </div>
+
+        <StreamingSummary product={product} />
  
         <Reviews product={product} />
       </div>
     </main>
   );
 }
- 
+
 export function generateStaticParams() {
   const products = getProducts();
  
