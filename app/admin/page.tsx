@@ -67,16 +67,16 @@ export default async function AdminPage() {
     "use server";
     const slug = String(formData.get("slug") || "");
     if (!slug) return;
-    revalidateTag(`product-summary-${slug}`);
-    revalidateTag(`product-insights-${slug}`);
+    revalidateTag(`product-summary-${slug}`, "max");
+    revalidateTag(`product-insights-${slug}`, "max");
   }
 
   async function revalidateAllTags() {
     "use server";
     const products = getProducts();
     for (const p of products) {
-      revalidateTag(`product-summary-${p.slug}`);
-      revalidateTag(`product-insights-${p.slug}`);
+      revalidateTag(`product-summary-${p.slug}`, "max");
+      revalidateTag(`product-insights-${p.slug}`, "max");
     }
   }
 
