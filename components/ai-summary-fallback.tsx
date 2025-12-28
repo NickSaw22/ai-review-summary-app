@@ -1,27 +1,17 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Product } from "@/lib/types";
-import { summarizeReviews } from "@/lib/ai-summary";
 import { FiveStarRating } from "./five-star-rating";
-import { AISummaryFallback } from "./ai-summary-fallback";
  
-export async function AIReviewSummary({ product }: { product: Product }) {
+export function AISummaryFallback({ product }: { product: Product }) {
   const averageRating =
     product.reviews.reduce((acc, review) => acc + review.stars, 0) /
     product.reviews.length;
- 
-  let summary: string;
-  try {
-    summary = await summarizeReviews(product);
-  } catch (error) {
-    console.error("AI summary failed, showing fallback:", error);
-    return <AISummaryFallback product={product} />;
-  }
  
   return (
     <Card className="w-full max-w-prose p-10 grid gap-10">
       <CardHeader className="items-center space-y-0 gap-4 p-0">
         <div className="grid gap-1 text-center">
-          <CardTitle className="text-lg">AI Summary</CardTitle>
+          <CardTitle className="text-lg">Customer Reviews</CardTitle>
           <p className="text-xs text-muted-foreground">
             Based on {product.reviews.length} customer ratings
           </p>
@@ -35,7 +25,7 @@ export async function AIReviewSummary({ product }: { product: Product }) {
       </CardHeader>
       <CardContent className="p-0 grid gap-4">
         <p className="text-sm leading-loose text-gray-500 dark:text-gray-400">
-          {summary}
+          Read the reviews below to see what customers are saying about this product.
         </p>
       </CardContent>
     </Card>

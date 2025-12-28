@@ -1,5 +1,6 @@
 "use client";
  
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Review as ReviewType } from "@/lib/types";
 import ms from "ms";
@@ -7,6 +8,12 @@ import { FiveStarRating } from "./five-star-rating";
  
 export function Review({ review }: { review: ReviewType }) {
   const date = new Date(review.date);
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Compute current time on client to avoid SSR non-determinism
+    setNow(Date.now());
+  }, []);
  
   return (
     <div className="flex gap-4">
@@ -21,7 +28,7 @@ export function Review({ review }: { review: ReviewType }) {
             <div className="flex items-center gap-2 mt-1">
               <FiveStarRating rating={review.stars} />
               <time className="text-xs text-muted-foreground" suppressHydrationWarning>
-                {timeAgo(date)}
+                {timeAgo(date, true, now ?? undefined)}
               </time>
             </div>
           </div>
@@ -44,13 +51,16 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
  
-function timeAgo(date: Date, suffix = true): string {
-  const now = Date.now();
-  const diff = now - date.getTime();
- 
+function timeAgo(date: Date, suffix = true, nowMillis?: number): string {
+  if (nowMillis === undefined) {
+    return "Just now";
+  }
+
+  const diff = nowMillis - date.getTime();
+
   if (diff < 1000) {
     return "Just now";
   }
- 
+
   return `${ms(diff, { long: true })}${suffix ? " ago" : ""}`;
 }

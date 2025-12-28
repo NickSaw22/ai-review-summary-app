@@ -1,11 +1,27 @@
-import { generateText, streamText } from "ai";
-import { Product } from "./types";
- 
+import { generateText, generateObject, streamText } from "ai";
+import { cacheLife, cacheTag } from "next/cache";
+import { Product, ReviewInsights, ReviewInsightsSchema } from "./types";
+
 export async function summarizeReviews(product: Product): Promise<string> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`product-summary-${product.slug}`);
+ 
   const averageRating =
     product.reviews.reduce((acc, review) => acc + review.stars, 0) /
     product.reviews.length;
+  
+  const startTime = Date.now();
+  const requestId = crypto.randomUUID();
  
+  console.log(JSON.stringify({
+    event: "ai_request_start",
+    requestId,
+    function: "summarizeReviews",
+    productSlug: product.slug,
+    reviewCount: product.reviews.length,
+    timestamp: new Date().toISOString(),
+  }));
   const prompt = `Write a summary of the reviews for the ${
     product.name
   } product. The product's average rating is ${averageRating} out of 5 stars.
@@ -37,21 +53,45 @@ ${product.reviews
     .join("\n\n")}`;
  
   try {
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model: "anthropic/claude-sonnet-4.5",
       prompt,
       maxOutputTokens: 1000,
-      temperature: 0.75,
+      temperature: 0.75,    
     });
+
+    const duration = Date.now() - startTime;
  
-    // Clean up the response
+    console.log(JSON.stringify({
+      event: "ai_request_success",
+      requestId,
+      function: "summarizeReviews",
+      productSlug: product.slug,
+      duration,
+      inputTokens: usage?.inputTokens,
+      outputTokens: usage?.outputTokens,
+      totalTokens: usage?.totalTokens,
+      timestamp: new Date().toISOString(),
+    }));
+ 
     return text
       .trim()
       .replace(/^"/, "")
-      .replace(/\"$/, "")
+      .replace(/"$/, "")
       .replace(/[\[\(]\d+ words[\]\)]/g, "");
   } catch (error) {
-    console.error("Failed to generate summary:", error);
+    const duration = Date.now() - startTime;
+ 
+    console.error(JSON.stringify({
+      event: "ai_request_error",
+      requestId,
+      function: "summarizeReviews",
+      productSlug: product.slug,
+      duration,
+      error: error instanceof Error ? error.message : "Unknown error",
+      timestamp: new Date().toISOString(),
+    }));
+ 
     throw new Error("Unable to generate review summary. Please try again.");
   }
 }
@@ -99,4 +139,43 @@ ${product.reviews
   });
  
   return result;
+}
+
+export async function getReviewInsights(product: Product): Promise<ReviewInsights> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`product-insights-${product.slug}`);
+ 
+  const averageRating =
+    product.reviews.reduce((acc, review) => acc + review.stars, 0) /
+    product.reviews.length;
+ 
+  const prompt = `Analyze the following customer reviews for the ${product.name} product (average rating: ${averageRating}/5).
+ 
+Extract:
+1. Pros: 3-5 positive aspects customers appreciate
+2. Cons: 3-5 negative aspects or concerns mentioned
+3. Themes: 3-5 key themes that emerge across reviews
+ 
+Be specific and concise. Each item should be 3-7 words.
+ 
+Reviews:
+${product.reviews
+    .map(
+      (review, i) => `Review ${i + 1} (${review.stars} stars):\n${review.review}`
+    )
+    .join("\n\n")}`;
+ 
+  try {
+    const { object } = await generateObject({
+      model: "anthropic/claude-sonnet-4.5",
+      schema: ReviewInsightsSchema,
+      prompt,
+    });
+ 
+    return object;
+  } catch (error) {
+    console.error("Failed to extract insights:", error);
+    throw new Error("Unable to extract review insights. Please try again.");
+  }
 }
