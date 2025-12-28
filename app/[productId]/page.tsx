@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProduct, getProducts } from "@/lib/sample-data";
 import { Reviews } from "@/components/reviews";
 import { StreamingSummary } from "@/components/streaming-summary";
+import { ReviewInsights } from "@/components/review-insights";
 
 export default async function ProductPage({
   params,
@@ -29,7 +30,8 @@ export default async function ProductPage({
         </div>
 
         <StreamingSummary product={product} />
- 
+        <ReviewInsights product={product} />
+        
         <Reviews product={product} />
       </div>
     </main>
