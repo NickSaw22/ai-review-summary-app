@@ -1,65 +1,9 @@
 import { revalidateTag } from "next/cache";
 import { getProducts } from "@/lib/sample-data";
 import { getRateLimitStats, resetRateLimit } from "@/lib/rate-limit";
-import { cookies } from "next/headers";
+import AdminSignOut from "@/components/admin-signout";
 
-export default async function AdminPage() {
-  const token = process.env.ADMIN_TOKEN || process.env.ADMIN_PASSWORD;
-  const cookieStore = await cookies();
-  const cookieToken = cookieStore.get("admin-token")?.value;
-
-  async function login(formData: FormData) {
-    "use server";
-    const provided = String(formData.get("token") || "");
-    const expected = process.env.ADMIN_TOKEN || process.env.ADMIN_PASSWORD || "";
-    if (provided && expected && provided === expected) {
-      const cs = await cookies();
-      cs.set("admin-token", provided, {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 60 * 60 * 8, // 8 hours
-      });
-    }
-  }
-
-  async function logout() {
-    "use server";
-    const cs = await cookies();
-    cs.delete("admin-token");
-  }
-
-  const authed = Boolean(token) && cookieToken === token;
-
-  if (!authed) {
-    return (
-      <main className="min-h-screen p-8">
-        <div className="max-w-md mx-auto space-y-6">
-          <h1 className="text-2xl font-bold">Admin Login</h1>
-          {!token ? (
-            <p className="text-sm text-red-600">
-              ADMIN_TOKEN not set. Define an environment variable `ADMIN_TOKEN` to enable admin access.
-            </p>
-          ) : null}
-          <form action={login} className="grid gap-3">
-            <label className="text-sm">Access Token</label>
-            <input
-              name="token"
-              type="password"
-              placeholder="Enter admin token"
-              className="text-sm border rounded px-2 py-1 bg-transparent"
-            />
-            <button
-              type="submit"
-              className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50 dark:hover:bg-gray-900"
-            >
-              Sign In
-            </button>
-          </form>
-        </div>
-      </main>
-    );
-  }
+export default function AdminPage() {
   const products = getProducts();
   const limiterStats = getRateLimitStats();
 
@@ -89,12 +33,10 @@ export default async function AdminPage() {
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-2xl font-bold">Admin Tools</h1>
-        <form action={logout}>
-          <button type="submit" className="px-3 py-1.5 text-xs rounded border hover:bg-gray-50 dark:hover:bg-gray-900">
-            Sign Out
-          </button>
-        </form>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Admin Tools</h1>
+          <AdminSignOut />
+        </div>
 
         {/* Cache tag revalidation */}
         <section className="space-y-4">
