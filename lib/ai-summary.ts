@@ -141,6 +141,41 @@ ${product.reviews
   return result;
 }
 
+export async function streamComparison(productA: Product, productB: Product) {
+  const avgA =
+    productA.reviews.reduce((acc, r) => acc + r.stars, 0) / productA.reviews.length;
+  const avgB =
+    productB.reviews.reduce((acc, r) => acc + r.stars, 0) / productB.reviews.length;
+
+  const prompt = `Compare customer reviews for two products and provide a concise, balanced analysis.
+
+Products:
+- ${productA.name} (average rating: ${avgA.toFixed(1)}/5)
+- ${productB.name} (average rating: ${avgB.toFixed(1)}/5)
+
+Guidelines:
+- Highlight similarities and differences in themes, sentiment, and reliability.
+- Note where opinions diverge and which use-cases each product fits best.
+- Avoid mentioning star ratings directly in the narrative.
+- Keep it to 4-6 sentences, clear and neutral.
+- Begin with "Compared to each other…".
+
+Reviews for ${productA.name}:
+${productA.reviews.map((review, i) => `A${i + 1} (${review.stars}★): ${review.review}`).join("\n")}
+
+Reviews for ${productB.name}:
+${productB.reviews.map((review, i) => `B${i + 1} (${review.stars}★): ${review.review}`).join("\n")}`;
+
+  const result = streamText({
+    model: "anthropic/claude-sonnet-4-5",
+    prompt,
+    maxOutputTokens: 1200,
+    temperature: 0.7,
+  });
+
+  return result;
+}
+
 export async function getReviewInsights(product: Product): Promise<ReviewInsights> {
   "use cache";
   cacheLife("hours");
@@ -178,4 +213,39 @@ ${product.reviews
     console.error("Failed to extract insights:", error);
     throw new Error("Unable to extract review insights. Please try again.");
   }
+}
+
+export async function streamRecommendations(history: Product[]) {
+  const catalog = (await import("./sample-data")).getProducts();
+  const historySlugs = new Set(history.map((p) => p.slug));
+  const candidates = catalog.filter((p) => !historySlugs.has(p.slug));
+
+  const prompt = `You are an assistant recommending products based on a user's viewing history.
+
+User history (recently viewed):
+${history
+    .map((p) => `- ${p.name}: ${p.description}`)
+    .join("\n")}
+
+Available candidates to consider (exclude history):
+${candidates.map((p) => `- ${p.name}: ${p.description}`).join("\n")}
+
+Instructions:
+- Recommend 3 products from the candidates.
+- Provide a brief rationale tailored to the history themes.
+- Keep it concise (1-2 sentences per recommendation).
+- Output as a simple list:
+  1. Product Name — short rationale
+  2. Product Name — short rationale
+  3. Product Name — short rationale
+`;
+
+  const result = streamText({
+    model: "anthropic/claude-sonnet-4-5",
+    prompt,
+    maxOutputTokens: 1000,
+    temperature: 0.7,
+  });
+
+  return result;
 }

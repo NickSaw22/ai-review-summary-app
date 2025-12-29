@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { FiveStarRating } from "./five-star-rating";
 import { Product } from "@/lib/types";
+import { useRef } from "react";
  
 export function StreamingSummary({ product }: { product: Product }) {
   const [summary, setSummary] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const didRunRef = useRef(false);
  
   const averageRating =
     product.reviews.reduce((acc, review) => acc + review.stars, 0) /
@@ -17,9 +21,18 @@ export function StreamingSummary({ product }: { product: Product }) {
     async function fetchStream() {
       setIsLoading(true);
       setSummary("");
+      setError(null);
  
       try {
-        const response = await fetch(`/api/summary/${product.slug}`);
+        // Abort any previous stream
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const response = await fetch(`/api/summary/${product.slug}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
  
         if (!response.ok) {
           throw new Error("Failed to fetch summary");
@@ -43,11 +56,14 @@ export function StreamingSummary({ product }: { product: Product }) {
         }
       } catch (error) {
         console.error("Stream error:", error);
-        setSummary("Unable to generate summary. Please try again.");
+        setError("Unable to generate summary. Please try again.");
         setIsLoading(false);
       }
     }
  
+    // Guard to avoid duplicate fetch in dev Strict Mode
+    if (didRunRef.current) return;
+    didRunRef.current = true;
     fetchStream();
   }, [product.slug]);
  
@@ -68,13 +84,63 @@ export function StreamingSummary({ product }: { product: Product }) {
         </div>
       </CardHeader>
       <CardContent className="p-0 grid gap-4">
-        <p className="text-sm leading-loose text-gray-500 dark:text-gray-400 min-h-[4rem]">
+        <div className="min-h-[4rem]">
           {isLoading ? (
-            <span className="animate-pulse">Generating summary...</span>
+            <div className="space-y-2 animate-pulse">
+              <div className="h-4 w-3/4 bg-gray-200 rounded" />
+              <div className="h-4 w-2/3 bg-gray-200 rounded" />
+              <div className="h-4 w-1/2 bg-gray-200 rounded" />
+            </div>
+          ) : error ? (
+            <p className="text-sm text-red-600">{error}</p>
           ) : (
-            summary
+            <p className="text-sm leading-loose text-gray-500 dark:text-gray-400">{summary}</p>
           )}
-        </p>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50 dark:hover:bg-gray-900"
+            onClick={() => {
+              didRunRef.current = false;
+              // trigger fetch again
+              setSummary("");
+              setIsLoading(true);
+              setError(null);
+              // Abort any ongoing request before refetching
+              abortControllerRef.current?.abort();
+              // Re-run effect body manually
+              (async () => {
+                try {
+                  const controller = new AbortController();
+                  abortControllerRef.current = controller;
+                  const response = await fetch(`/api/summary/${product.slug}`, {
+                    signal: controller.signal,
+                    cache: "no-store",
+                  });
+                  if (!response.ok) throw new Error("Failed to fetch summary");
+                  const reader = response.body?.getReader();
+                  const decoder = new TextDecoder();
+                  if (!reader) throw new Error("No reader available");
+                  setIsLoading(false);
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    setSummary((prev) => prev + chunk);
+                  }
+                } catch (err) {
+                  console.error("Stream error:", err);
+                  setError("Unable to generate summary. Please try again.");
+                  setIsLoading(false);
+                }
+              })();
+            }}
+          >
+            Regenerate
+          </button>
+        </div>
       </CardContent>
     </Card>
   );
