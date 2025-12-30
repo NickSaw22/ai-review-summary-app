@@ -1,4 +1,4 @@
-import { getProduct } from "@/lib/sample-data";
+import { getProduct } from "@/lib/products";
 import { streamRecommendations } from "@/lib/ai-summary";
 import { rateLimit, getClientKeyFromRequest } from "@/lib/rate-limit";
 
