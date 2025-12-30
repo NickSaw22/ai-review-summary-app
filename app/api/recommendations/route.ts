@@ -1,4 +1,4 @@
-import { getProduct } from "@/lib/sample-data";
+import { getProduct } from "@/lib/products";
 import { streamRecommendations } from "@/lib/ai-summary";
 import { rateLimit, getClientKeyFromRequest } from "@/lib/rate-limit";
 
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
   let historyProducts;
   try {
-    historyProducts = slugs.map((slug) => getProduct(slug));
+    historyProducts = await Promise.all(slugs.map((slug) => getProduct(slug)));
   } catch {
     return new Response("Product not found in history", { status: 404 });
   }

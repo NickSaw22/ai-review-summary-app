@@ -1,5 +1,5 @@
 import { streamReviewSummary } from "@/lib/ai-summary";
-import { getProduct } from "@/lib/sample-data";
+import { getProduct } from "@/lib/products";
 import { rateLimit, getClientKeyFromRequest } from "@/lib/rate-limit";
  
 export async function GET(
@@ -22,7 +22,7 @@ export async function GET(
  
   let product;
   try {
-    product = getProduct(slug);
+    product = await getProduct(slug);
   } catch {
     return new Response("Product not found", { status: 404 });
   }

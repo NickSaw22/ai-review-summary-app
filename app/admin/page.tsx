@@ -1,5 +1,5 @@
 import { revalidateTag } from "next/cache";
-import { getProducts } from "@/lib/sample-data";
+import { getProducts } from "@/lib/products";
 import { getRateLimitStats, resetRateLimit } from "@/lib/rate-limit";
 import AdminSignOut from "@/components/admin-signout";
 

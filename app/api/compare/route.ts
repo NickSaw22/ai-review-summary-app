@@ -1,4 +1,4 @@
-import { getProduct } from "@/lib/sample-data";
+import { getProduct } from "@/lib/products";
 import { streamComparison } from "@/lib/ai-summary";
 import { rateLimit, getClientKeyFromRequest } from "@/lib/rate-limit";
 
@@ -23,8 +23,7 @@ export async function GET(request: Request) {
 
   let a, b;
   try {
-    a = getProduct(x);
-    b = getProduct(y);
+    [a, b] = await Promise.all([getProduct(x), getProduct(y)]);
   } catch {
     return new Response("Product not found", { status: 404 });
   }
