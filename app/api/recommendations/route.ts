@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
   let historyProducts;
   try {
-    historyProducts = slugs.map((slug) => getProduct(slug));
+    historyProducts = await Promise.all(slugs.map((slug) => getProduct(slug)));
   } catch {
     return new Response("Product not found in history", { status: 404 });
   }

@@ -23,8 +23,7 @@ export async function GET(request: Request) {
 
   let a, b;
   try {
-    a = getProduct(x);
-    b = getProduct(y);
+    [a, b] = await Promise.all([getProduct(x), getProduct(y)]);
   } catch {
     return new Response("Product not found", { status: 404 });
   }

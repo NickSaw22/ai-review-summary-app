@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { Suspense, use } from "react";
 import { getProduct, getProducts } from "@/lib/products";
 import { Product } from "@/lib/types";
 import { Reviews } from "@/components/reviews";
@@ -11,13 +12,17 @@ import { SentimentTrend } from "@/components/sentiment-trend";
 import { Recommendations } from "@/components/recommendations";
 import { TrackView } from "@/components/track-view";
 
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<{ productId: string }>;
-}) {
-  const { productId } = await params;
- 
+function priceLabel(p: Product) {
+  const sale = Number.isFinite(p.salePrice) ? p.salePrice : undefined;
+  const regular = Number.isFinite(p.regularPrice) ? p.regularPrice : undefined;
+  const onSale = Boolean(p.onSale) && sale !== undefined;
+  if (onSale && regular) return `$${sale!.toFixed(2)} (was $${regular.toFixed(2)})`;
+  if (sale !== undefined) return `$${sale.toFixed(2)}`;
+  if (regular !== undefined) return `$${regular.toFixed(2)}`;
+  return "";
+}
+
+async function ProductContent({ productId }: { productId: string }) {
   let product: Product | null = null;
   try {
     product = await getProduct(productId);
@@ -26,16 +31,6 @@ export default async function ProductPage({
     return notFound();
   }
 
-  function priceLabel(p: Product) {
-    const sale = Number.isFinite(p.salePrice) ? p.salePrice : undefined;
-    const regular = Number.isFinite(p.regularPrice) ? p.regularPrice : undefined;
-    const onSale = Boolean(p.onSale) && sale !== undefined;
-    if (onSale && regular) return `$${sale!.toFixed(2)} (was $${regular.toFixed(2)})`;
-    if (sale !== undefined) return `$${sale.toFixed(2)}`;
-    if (regular !== undefined) return `$${regular.toFixed(2)}`;
-    return "";
-  }
- 
   return (
     <main className="min-h-screen p-6 lg:p-10">
       <div className="max-w-6xl mx-auto space-y-10">
@@ -109,9 +104,26 @@ export default async function ProductPage({
   );
 }
 
+function ParamsGate({ params }: { params: Promise<{ productId: string }> }) {
+  const { productId } = use(params);
+  return <ProductContent productId={productId} />;
+}
+
+export default function ProductPage({
+  params,
+}: {
+  params: Promise<{ productId: string }>;
+}) {
+  return (
+    <Suspense fallback={<main className="min-h-screen p-6 lg:p-10"><div className="max-w-6xl mx-auto">Loading…</div></main>}>
+      {/* Fetch product within Suspense to avoid route blocking */}
+      <ParamsGate params={params} />
+    </Suspense>
+  );
+}
+
 export function generateStaticParams() {
   const products = getProducts();
- 
   return products.map((product) => ({
     productId: product.slug,
   }));
@@ -123,18 +135,15 @@ export async function generateMetadata({
   params: Promise<{ productId: string }>;
 }): Promise<Metadata> {
   const { productId } = await params;
- 
-  let product: Product | null = null;
   try {
-    product = await getProduct(productId);
+    const product = await getProduct(productId);
+    return {
+      title: `${product.name} - Customer Reviews`,
+      description: product.description,
+    };
   } catch {
     return {
       title: "Product Not Found",
     };
   }
- 
-  return {
-    title: `${product!.name} - Customer Reviews`,
-    description: product!.description,
-  };
 }
